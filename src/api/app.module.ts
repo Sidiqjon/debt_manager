@@ -4,6 +4,8 @@ import { PrismaModule } from '../common/database/prisma/prisma.module';
 
 import { AdminModule } from './admin/admin.module';
 
+import { UploadModule } from './file/upload.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -11,6 +13,7 @@ import { AdminModule } from './admin/admin.module';
     }),
     PrismaModule,
     AdminModule,
+    UploadModule,
   ],
   controllers: [],
   providers: [],
