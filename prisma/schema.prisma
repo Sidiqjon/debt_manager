@@ -1,0 +1,153 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id          String   @id @default(uuid())
+  fullName    String
+  phoneNumber String
+  email       String   
+  username    String   @unique
+  password    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Seller {
+  id          String   @id @default(uuid())
+  fullName    String
+  phoneNumber String
+  email       String   
+  username    String   @unique
+  password    String
+  passCode    String?
+  image       String?
+  balance     Decimal  @default(0)
+  isVerified  Boolean  @default(false)
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  debtors         Debtor[]
+  samples         Sample[]
+  sentMessages    Message[] @relation("SellerMessages")
+}
+
+model Debtor {
+  id        String   @id @default(uuid())
+  sellerId  String
+  fullName  String
+  address   String
+  notice    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  seller        Seller         @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  debts         Debt[]
+  payments      Payment[]
+  phoneNumbers  PhoneNumber[]
+  debtorImages  DebtorImage[]
+  receivedMessages Message[] @relation("DebtorMessages")
+}
+
+model Debt {
+  id            String          @id @default(uuid())
+  debtorId      String
+  productName   String
+  date          DateTime
+  deadline      DeadlinePeriod  @default(ONE_MONTH)
+  comment       String?
+  amount        Decimal         @default(0)
+  paid          Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  debtor        Debtor          @relation(fields: [debtorId], references: [id], onDelete: Cascade)
+  productImages ProductImage[]
+  payments      Payment[]
+}
+
+model Payment {
+  id        String   @id @default(uuid())
+  debtorId  String
+  debtId    String
+  amount    Decimal  @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  debtor Debtor @relation(fields: [debtorId], references: [id], onDelete: Cascade)
+  debt   Debt   @relation(fields: [debtId], references: [id], onDelete: Cascade)
+}
+
+model PhoneNumber {
+  id        String   @id @default(uuid())
+  debtorId  String
+  number    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  debtor Debtor @relation(fields: [debtorId], references: [id], onDelete: Cascade)
+}
+
+model DebtorImage {
+  id       String @id @default(uuid())
+  debtorId String
+  image    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  debtor Debtor @relation(fields: [debtorId], references: [id], onDelete: Cascade)
+}
+
+model ProductImage {
+  id     String @id @default(uuid())
+  image  String
+  debtId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  debt Debt @relation(fields: [debtId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  from      String
+  to        String
+  message   String
+  sent      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sender   Seller @relation("SellerMessages", fields: [from], references: [id], onDelete: Cascade)
+  receiver Debtor @relation("DebtorMessages", fields: [to], references: [id], onDelete: Cascade)
+}
+
+model Sample {
+  id        String   @id @default(uuid())
+  sellerId  String
+  message   String
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  seller    Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+}
+
+
+enum DeadlinePeriod {
+  ONE_MONTH    @map("1 oy")
+  TWO_MONTHS   @map("2 oy")
+  THREE_MONTHS @map("3 oy")
+  SIX_MONTHS   @map("6 oy")
+  ONE_YEAR     @map("1 yil")
+}
