@@ -1,7 +1,6 @@
 import { Injectable, ConflictException, NotFoundException, UnauthorizedException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/database/prisma/prisma.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
@@ -10,6 +9,9 @@ import { Admin } from '@prisma/client';
 import { AdminRole } from './dto/create-admin.dto';
 import { config } from 'src/config';
 import { Response } from 'express'; 
+import { unlinkFile } from 'src/common/utils/unlink-file';
+import { BcryptEncryption } from 'src/infrastructure/lib/bcrypt/index';
+import { log } from 'console';
 
 @Injectable()
 export class AdminService {
@@ -46,7 +48,15 @@ export class AdminService {
       throw new ConflictException('Email already exists');
     }
 
-    const hashedPassword = await bcrypt.hash(createAdminDto.password, 12);
+    const existingPhoneNumber = await this.prisma.admin.findFirst({
+      where: { phoneNumber: createAdminDto.phoneNumber }
+    });
+
+    if (existingPhoneNumber) {
+      throw new ConflictException('Phone number already exists');
+    }
+
+    const hashedPassword = await BcryptEncryption.encrypt(createAdminDto.password);
 
     const superAdmin = await this.prisma.admin.create({
       data: {
@@ -59,7 +69,6 @@ export class AdminService {
 
     let superAdminWithoutPassword = { ...superAdmin, password: "" };
     return superAdminWithoutPassword;
-
   }
 
   async createAdmin(createAdminDto: CreateAdminDto, currentAdminId: string): Promise<Admin> {
@@ -85,7 +94,15 @@ export class AdminService {
       throw new ConflictException('Email already exists');
     }
 
-    const hashedPassword = await bcrypt.hash(createAdminDto.password, 12);
+    const existingPhoneNumber = await this.prisma.admin.findFirst({
+      where: { phoneNumber: createAdminDto.phoneNumber }
+    });
+
+    if (existingPhoneNumber) {
+      throw new ConflictException('Phone number already exists');
+    }
+
+    const hashedPassword = await BcryptEncryption.encrypt(createAdminDto.password);
 
     const admin = await this.prisma.admin.create({
       data: {
@@ -123,7 +140,8 @@ export class AdminService {
     return admin;
   }
 
-  async update(id: string, updateAdminDto: UpdateAdminDto, currentAdminId: string): Promise<Admin> {
+  async update(id: string, updateAdminDto: UpdateAdminDto, currentAdminId: string, currentAdminRole: AdminRole): Promise<Admin> {
+
     const adminToUpdate = await this.prisma.admin.findUnique({
       where: { id }
     });
@@ -131,6 +149,14 @@ export class AdminService {
     if (!adminToUpdate) {
       throw new NotFoundException('Admin not found');
     }
+
+    if (id !== currentAdminId && adminToUpdate.role === AdminRole.SUPER) {
+      throw new ForbiddenException('Cannot update SUPER admin');
+    }
+
+	if (id !== currentAdminId && currentAdminRole !== AdminRole.SUPER) {
+		throw new ForbiddenException('Only SUPER admin can update other admins');
+	}
 
     const currentAdmin = await this.prisma.admin.findUnique({
       where: { id: currentAdminId }
@@ -160,11 +186,21 @@ export class AdminService {
       }
     }
 
+    if (updateAdminDto.phoneNumber) {
+      const existingPhoneNumber = await this.prisma.admin.findFirst({
+        where: { phoneNumber: updateAdminDto.phoneNumber }
+      });
+
+      if (existingPhoneNumber && existingPhoneNumber.id !== id) {
+        throw new ConflictException('Phone number already exists');
+      }
+    }
+
     const updateData: any = { ...updateAdminDto };
 
-    // if (updateAdminDto.password) {
-    //   updateData.password = await bcrypt.hash(updateAdminDto.password, 12);
-    // }
+	if (updateAdminDto.image) {
+		unlinkFile(adminToUpdate.image ?? "");
+	}
 
     const updatedAdmin = await this.prisma.admin.update({
       where: { id },
@@ -196,6 +232,10 @@ export class AdminService {
       throw new ForbiddenException('Cannot delete SUPER admin');
     }
 
+	if (adminToDelete.image) {
+		unlinkFile(adminToDelete.image ?? "");
+	}
+
     const deletedAdmin = await this.prisma.admin.delete({
       where: { id }
     });
@@ -213,7 +253,7 @@ export class AdminService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isPasswordValid = await bcrypt.compare(loginDto.password, admin.password);
+    const isPasswordValid = await BcryptEncryption.compare(loginDto.password, admin.password);
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
@@ -231,11 +271,11 @@ export class AdminService {
     };
 
     const accessToken = this.jwtService.sign(payload, {
-      expiresIn: config.JWT_ACCESS_EXPIRES_IN || '15m',
+      expiresIn: config.JWT_ACCESS_EXPIRES_IN,
     });
 
     const refreshToken = this.jwtService.sign(payload, {
-      expiresIn: config.JWT_REFRESH_EXPIRES_IN || '7d',
+      expiresIn: config.JWT_REFRESH_EXPIRES_IN,
     });
 
     res.cookie('refresh_token_admin', refreshToken, {
@@ -289,7 +329,7 @@ export class AdminService {
     let data: any;
     try {
       data = await this.jwtService.verify(refresh_token, {
-        secret: config.JWT_SECRET || 'secret-key',
+        secret: config.JWT_SECRET,
       });
     } catch (error) {
       throw new BadRequestException(`Error on refresh token: ${error}`);

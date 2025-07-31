@@ -1,5 +1,6 @@
 import { 
-    Controller, Post, Get, Param, Res, UploadedFiles, UseInterceptors 
+    Controller, Post, Get, Param, Res, UploadedFiles, UseInterceptors, 
+    BadRequestException
   } from '@nestjs/common';
   import { FilesInterceptor } from '@nestjs/platform-express';
   import { diskStorage } from 'multer';
@@ -8,6 +9,7 @@ import {
   import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
   import * as path from 'path';
   import { existsSync } from 'fs';
+import { ImageValidationPipe } from 'src/infrastructure/lib/pipe/image.validation.pipe';
   
   @ApiTags('File Upload 📂')
   @Controller('upload')
@@ -37,14 +39,23 @@ import {
             callback(null, uniqueName);
           },
         }),
+        limits: {
+          fileSize: 10 * 1024 * 1024, 
+        },
+        fileFilter(req, file, callback) {
+          const allowedExtensions = ['.jpeg', '.jpg', '.png', '.svg', '.heic', '.heif', '.webp'];
+          const ext = path.extname(file.originalname).toLowerCase();
+          if (!allowedExtensions.includes(ext)) {
+            return callback(new BadRequestException(`Invalid file type: ${ext}. Allowed types: ${allowedExtensions.join(', ')}`), false);
+          }
+        },
       }),
     )
-  
-    uploadFiles(@UploadedFiles() files: Express.Multer.File[]) {
+
+    uploadFiles(@UploadedFiles(new ImageValidationPipe) files: Express.Multer.File[]) {
       const uploadedFiles = files.map(file => file.filename);
       return { message: 'Files have been uploaded successfully!', fileNames: uploadedFiles };
     }
-    
 
     @Get(':filename')
     @ApiOperation({ summary: 'Retrieve an uploaded file by filename 🏞️' })

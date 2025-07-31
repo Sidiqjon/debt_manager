@@ -7,15 +7,14 @@ import { JwtStrategy } from '../../common/strategy/jwt.strategy';
 import { JwtAuthGuard } from '../../common/guard/jwt-auth.guard';
 import { RolesGuard } from '../../common/guard/roles.guard';
 import { config } from 'src/config';
-
 @Module({
   imports: [
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        secret: config.JWT_SECRET || 'secret-key',
+        secret: config.JWT_SECRET,
         signOptions: {
-          expiresIn: config.JWT_ACCESS_EXPIRES_IN || '15m',
+          expiresIn: config.JWT_ACCESS_EXPIRES_IN,
         },
       }),
       inject: [ConfigService],

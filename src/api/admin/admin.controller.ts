@@ -142,6 +142,7 @@ export class AdminController {
     status: HttpStatus.BAD_REQUEST,
     description: 'Refresh token is required',
   })
+  
   async logout(
     @CookieGetter('refresh_token_admin') refresh_token: string,
     @Res({ passthrough: true }) res: Response,
@@ -223,7 +224,7 @@ export class AdminController {
     @Body() updateAdminDto: UpdateAdminDto,
     @Request() req
   ) {
-    return this.adminService.update(id, updateAdminDto, req.user.sub);
+    return this.adminService.update(id, updateAdminDto, req.user.sub, req.user.role);
   }
 
   @Delete(':id')

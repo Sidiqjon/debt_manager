@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../common/database/prisma/prisma.module';
 
 import { AdminModule } from './admin/admin.module';
+import { SellerModule } from './seller/seller.module';
 
 import { UploadModule } from './file/upload.module';
 
@@ -14,6 +15,7 @@ import { UploadModule } from './file/upload.module';
     PrismaModule,
     AdminModule,
     UploadModule,
+    SellerModule,
   ],
   controllers: [],
   providers: [],
