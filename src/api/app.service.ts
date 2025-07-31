@@ -3,7 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { config } from 'src/config';
-// import * as cookieParser from 'cookie-parser';
+import * as cookieParser from 'cookie-parser';
 
 export default class Application {
   public static async main(): Promise<void> {
@@ -23,6 +23,8 @@ export default class Application {
       transform: true,
     }),
   );
+
+  app.use(cookieParser());
 
   const config_swagger = new DocumentBuilder()
     .setTitle('Debt Manager API!')

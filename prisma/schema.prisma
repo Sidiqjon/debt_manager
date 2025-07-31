@@ -20,6 +20,9 @@ model Admin {
   email       String   
   username    String   @unique
   password    String
+  image       String?
+  isActive    Boolean  @default(false)
+  role        AdminRole @default(ADMIN)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -150,4 +153,10 @@ enum DeadlinePeriod {
   THREE_MONTHS @map("3 oy")
   SIX_MONTHS   @map("6 oy")
   ONE_YEAR     @map("1 yil")
+}
+
+
+enum AdminRole {
+    SUPER
+    ADMIN
 }
