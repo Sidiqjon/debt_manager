@@ -4,6 +4,7 @@ import { PrismaModule } from '../common/database/prisma/prisma.module';
 
 import { AdminModule } from './admin/admin.module';
 import { SellerModule } from './seller/seller.module';
+import { DebtorModule } from './debtor/debtor.module';
 
 import { UploadModule } from './file/upload.module';
 
@@ -16,6 +17,7 @@ import { UploadModule } from './file/upload.module';
     AdminModule,
     UploadModule,
     SellerModule,
+    DebtorModule,
   ],
   controllers: [],
   providers: [],
