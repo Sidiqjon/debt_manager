@@ -350,7 +350,8 @@ export class SellerService {
         }
       }
 
-      if (updateData.image && existingSeller.image && existingSeller.image !== updateData.image) {
+      if (updateData.image && existingSeller.image) {
+        console.log(existingSeller.image);
         unlinkFile(existingSeller.image);
       }
 

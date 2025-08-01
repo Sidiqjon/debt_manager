@@ -9,7 +9,6 @@ import {
   import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
   import * as path from 'path';
   import { existsSync } from 'fs';
-import { ImageValidationPipe } from 'src/infrastructure/lib/pipe/image.validation.pipe';
   
   @ApiTags('File Upload 📂')
   @Controller('upload')
@@ -48,6 +47,7 @@ import { ImageValidationPipe } from 'src/infrastructure/lib/pipe/image.validatio
           if (!allowedExtensions.includes(ext)) {
             return callback(new BadRequestException(`Invalid file type: ${ext}. Allowed types: ${allowedExtensions.join(', ')}`), false);
           }
+          callback(null, true);
         },
       }),
     )
