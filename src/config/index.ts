@@ -9,6 +9,11 @@ export type ConfigType = {
   JWT_ACCESS_EXPIRES_IN: string;
   JWT_REFRESH_EXPIRES_IN: string;
   NODE_ENV: string;
+  SMTP_HOST: string;
+  SMTP_PORT: number;
+  SMTP_USER: string;
+  SMTP_PASS: string;
+  SMTP_FROM: string;
 };
 
 const requiredVariables = [
@@ -17,6 +22,11 @@ const requiredVariables = [
   'JWT_ACCESS_EXPIRES_IN',
   'JWT_REFRESH_EXPIRES_IN',
   'NODE_ENV',
+  'SMTP_HOST',
+  'SMTP_PORT',
+  'SMTP_USER',
+  'SMTP_PASS',
+  'SMTP_FROM',
 ];
 
 const missingVariables = requiredVariables.filter((variable) => {
@@ -37,4 +47,9 @@ export const config: ConfigType = {
   JWT_ACCESS_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN as string,
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN as string,
   NODE_ENV: process.env.NODE_ENV as string,
+  SMTP_HOST: process.env.SMTP_HOST as string,
+  SMTP_PORT: parseInt(process.env.SMTP_PORT as string, 10),
+  SMTP_USER: process.env.SMTP_USER as string,
+  SMTP_PASS: process.env.SMTP_PASS as string,
+  SMTP_FROM: process.env.SMTP_FROM as string
 };
