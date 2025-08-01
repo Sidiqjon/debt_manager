@@ -11,7 +11,6 @@ import { config } from 'src/config';
 import { Response } from 'express'; 
 import { unlinkFile } from 'src/common/utils/unlink-file';
 import { BcryptEncryption } from 'src/infrastructure/lib/bcrypt/index';
-import { log } from 'console';
 
 @Injectable()
 export class AdminService {
@@ -278,11 +277,20 @@ export class AdminService {
       expiresIn: config.JWT_REFRESH_EXPIRES_IN,
     });
 
+    res.clearCookie('refresh_token_admin', {
+      httpOnly: true,
+      secure: config.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/', 
+    });
+
+
     res.cookie('refresh_token_admin', refreshToken, {
     httpOnly: true,
     secure: config.NODE_ENV === 'production', 
     sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000 
+    maxAge: 7 * 24 * 60 * 60 * 1000, 
+    path: '/',
     });
 
     return {
@@ -292,31 +300,31 @@ export class AdminService {
   }
 
 
-  async refreshAccessToken(refreshToken: string) {
+  async refreshAccessToken(refreshTokenAdmin: string) {
     try {
-      const payload = this.jwtService.verify(refreshToken);
+      const payloadAdmin = this.jwtService.verify(refreshTokenAdmin);
 
       const admin = await this.prisma.admin.findUnique({
-        where: { id: payload.sub }
+        where: { id: payloadAdmin.sub }
       });
 
       if (!admin) {
         throw new UnauthorizedException('Admin not found');
       }
 
-      if (!admin.isActive && admin.role !== AdminRole.SUPER) {
+      if (admin && !admin.isActive && admin.role !== AdminRole.SUPER) {
         throw new UnauthorizedException('Admin account is inactive');
       }
 
       const newPayload = {
-        sub: admin.id,
-        username: admin.username,
-        role: admin.role,
-        isActive: admin.isActive
+          sub: admin.id,
+          username: admin.username,
+          role: admin.role,
+          isActive: admin.isActive
       };
 
       const accessToken = this.jwtService.sign(newPayload, {
-        expiresIn: config.JWT_ACCESS_EXPIRES_IN || '15m',
+        expiresIn: config.JWT_ACCESS_EXPIRES_IN,
       });
 
       return { accessToken };
@@ -334,6 +342,7 @@ export class AdminService {
     } catch (error) {
       throw new BadRequestException(`Error on refresh token: ${error}`);
     }
+
     res.clearCookie('refresh_token_admin');
     return { message: 'Logged out successfully' };
   }

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
 import { SellerController } from './seller.controller';
 import { SellerService } from './seller.service';
 import { OtpService } from '../../infrastructure/lib/services/otp.service';
@@ -11,6 +12,7 @@ import { config } from '../../config';
 
 @Module({
   imports: [
+    PassportModule,
     JwtModule.register({
       secret: config.JWT_SECRET,
       signOptions: { expiresIn: config.JWT_ACCESS_EXPIRES_IN },

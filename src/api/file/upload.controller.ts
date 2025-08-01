@@ -52,7 +52,7 @@ import { ImageValidationPipe } from 'src/infrastructure/lib/pipe/image.validatio
       }),
     )
 
-    uploadFiles(@UploadedFiles(new ImageValidationPipe) files: Express.Multer.File[]) {
+    uploadFiles(@UploadedFiles() files: Express.Multer.File[]) {
       const uploadedFiles = files.map(file => file.filename);
       return { message: 'Files have been uploaded successfully!', fileNames: uploadedFiles };
     }

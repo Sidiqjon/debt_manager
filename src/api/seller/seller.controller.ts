@@ -16,17 +16,20 @@ import { Response, Request } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { SellerService } from './seller.service';
 import { CreateSellerDto } from './dto/create-seller.dto';
-import { UpdateSellerDto, UpdateSellerPasswordDto, RequestPasswordResetDto } from './dto/update-seller.dto';
+import { UpdateSellerDto, UpdateSellerPasswordDto, RequestPasswordResetDto, VerifyOtpDto } from './dto/update-seller.dto';
 import { SellerLoginDto } from './dto/seller-login.dto';
 import { JwtAuthGuard } from '../../common/guard/jwt-auth.guard';
 import { RolesGuard } from '../../common/guard/roles.guard';
 import { Roles } from '../../common/decorator/roles.decorator';
+import { Public } from '../../common/decorator/public.decorator';
 import { AdminRole } from '../../api/admin/dto/create-admin.dto';
 import { SellerRole } from './dto/create-seller.dto';
+import { CookieGetter } from 'src/common/decorator/cookie-getter.decorator';
+
 @ApiTags('Sellers')
 @Controller('sellers')
 export class SellerController {
-  constructor(private readonly sellerService: SellerService) {}
+  constructor(private readonly sellerService: SellerService) { }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -74,6 +77,7 @@ export class SellerController {
     return this.sellerService.createSeller(createSellerDto);
   }
 
+  @Public()
   @Post('login')
   @ApiOperation({
     summary: 'Seller login',
@@ -101,12 +105,14 @@ export class SellerController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const result = await this.sellerService.loginSeller(loginDto);
-    
+
+    response.clearCookie('refresh_token_seller');
+
     response.cookie('refresh_token_seller', result.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, 
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     return {
@@ -117,6 +123,7 @@ export class SellerController {
     };
   }
 
+  @Public()
   @Post('refresh')
   @ApiOperation({
     summary: 'Refresh access token',
@@ -161,24 +168,18 @@ export class SellerController {
     description: 'Logs out the seller by removing the refresh token cookie.',
   })
   @ApiResponse({
-    status: 200,
-    description: 'Logout successful',
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: { type: 'number', example: 200 },
-        message: { type: 'string', example: 'Logout successful' },
-        data: { type: 'null', example: null },
-      },
-    },
+    status: HttpStatus.OK,
+    description: 'Logged out successfully',
   })
-  async logoutSeller(@Res({ passthrough: true }) response: Response) {
-    response.clearCookie('refresh_token_seller');
-    return {
-      statusCode: 200,
-      message: 'Logout successful',
-      data: null,
-    };
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Refresh token is not available',
+  })
+  async logout(
+    @CookieGetter('refresh_token_seller') refresh_token: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.sellerService.logout(refresh_token, res);
   }
 
   @Get()
@@ -383,6 +384,7 @@ export class SellerController {
     return this.sellerService.updateSeller(id, updateSellerDto, requesterId, requesterRole);
   }
 
+  @Public()
   @Post('request-password-reset')
   @ApiOperation({
     summary: 'Request password reset',
@@ -408,6 +410,37 @@ export class SellerController {
     return this.sellerService.requestPasswordReset(requestDto);
   }
 
+  @Public()
+  @Post('verify-otp')
+  @ApiOperation({
+    summary: 'Verify OTP',
+    description: 'Verifies the OTP sent to the seller\'s email for password reset.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP verified successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 200 },
+        message: { type: 'string', example: 'OTP verified successfully' },
+        data: { type: 'null', example: null },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid or expired OTP',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Seller with this email not found',
+  })
+  async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
+    return this.sellerService.verifyOtp(verifyOtpDto);
+  }
+
+  @Public()
   @Post('reset-password')
   @ApiOperation({
     summary: 'Reset password with OTP',

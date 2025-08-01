@@ -81,20 +81,6 @@ export class UpdateSellerPasswordDto {
   email: string;
 
   @ApiProperty({
-    description: 'OTP code sent to email',
-    example: '123456',
-    minLength: 6,
-    maxLength: 6
-  })
-  @IsString()
-  @MinLength(6)
-  @MaxLength(6)
-  @Matches(/^\d{6}$/, {
-    message: 'OTP must be exactly 6 digits'
-  })
-  otp: string;
-
-  @ApiProperty({
     description: 'New password',
     example: 'NewStrongPassword123!',
     minLength: 4
@@ -114,4 +100,27 @@ export class RequestPasswordResetDto {
   })
   @IsEmail()
   email: string;
+}
+
+export class VerifyOtpDto {
+  @ApiProperty({
+    description: 'Email address',
+    example: 'john.doe@example.com'
+  })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({
+    description: 'OTP code sent to email',
+    example: '123456',
+    minLength: 6,
+    maxLength: 6
+  })
+  @IsString()
+  @MinLength(6)
+  @MaxLength(6)
+  @Matches(/^\d{6}$/, {
+    message: 'OTP must be exactly 6 digits'
+  })
+  otp: string;
 }

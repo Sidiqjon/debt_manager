@@ -118,18 +118,15 @@ export class AdminController {
       description: 'Invalid refresh token',
     })
     async refreshToken(@Req() req: RequestType) {
-      const refreshToken = req.cookies?.refresh_token_admin;
-
-      if (!refreshToken) {
+      const refreshTokenAdmin = req.cookies?.refresh_token_admin;
+      if (!refreshTokenAdmin) {
         throw new UnauthorizedException('Refresh token not found');
       }
 
-      return this.adminService.refreshAccessToken(refreshToken);
+      return this.adminService.refreshAccessToken(refreshTokenAdmin, );
     }
 
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Admin Logout',
     description: 'Logout admin and invalidate refresh token'
@@ -145,7 +142,7 @@ export class AdminController {
   
   async logout(
     @CookieGetter('refresh_token_admin') refresh_token: string,
-    @Res({ passthrough: true }) res: Response,
+    @Res({ passthrough: true }) res: Response
   ) {
     return this.adminService.logout(refresh_token, res);
   }

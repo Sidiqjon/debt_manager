@@ -14,6 +14,7 @@ export type ConfigType = {
   SMTP_USER: string;
   SMTP_PASS: string;
   SMTP_FROM: string;
+  OTPSECRET: string;
 };
 
 const requiredVariables = [
@@ -27,6 +28,7 @@ const requiredVariables = [
   'SMTP_USER',
   'SMTP_PASS',
   'SMTP_FROM',
+  'OTPSECRET',
 ];
 
 const missingVariables = requiredVariables.filter((variable) => {
@@ -51,5 +53,6 @@ export const config: ConfigType = {
   SMTP_PORT: parseInt(process.env.SMTP_PORT as string, 10),
   SMTP_USER: process.env.SMTP_USER as string,
   SMTP_PASS: process.env.SMTP_PASS as string,
-  SMTP_FROM: process.env.SMTP_FROM as string
+  SMTP_FROM: process.env.SMTP_FROM as string,
+  OTPSECRET: process.env.OTPSECRET as string
 };

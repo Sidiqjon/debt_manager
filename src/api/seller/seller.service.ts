@@ -4,10 +4,11 @@ import { PrismaService } from '../../common/database/prisma/prisma.service';
 import { BcryptEncryption } from '../../infrastructure/lib/bcrypt';
 import { OtpService } from '../../infrastructure/lib/services/otp.service';
 import { unlinkFile } from '../../common/utils/unlink-file';
-import { CreateSellerDto } from './dto/create-seller.dto';
-import { UpdateSellerDto, UpdateSellerPasswordDto, RequestPasswordResetDto } from './dto/update-seller.dto';
+import { CreateSellerDto, SellerRole } from './dto/create-seller.dto';
+import { UpdateSellerDto, UpdateSellerPasswordDto, RequestPasswordResetDto, VerifyOtpDto } from './dto/update-seller.dto';
 import { SellerLoginDto } from './dto/seller-login.dto';
 import { config } from '../../config';
+import { Response } from 'express'; 
 
 @Injectable()
 export class SellerService {
@@ -38,7 +39,6 @@ export class SellerService {
         throw new ConflictException({
           statusCode: 409,
           message: `Seller with this ${conflictField} already exists`,
-          data: null,
         });
       }
 
@@ -90,7 +90,6 @@ export class SellerService {
         throw new UnauthorizedException({
           statusCode: 401,
           message: 'Invalid credentials',
-          data: null,
         });
       }
 
@@ -98,7 +97,6 @@ export class SellerService {
         throw new UnauthorizedException({
           statusCode: 401,
           message: 'Account is deactivated',
-          data: null,
         });
       }
 
@@ -111,11 +109,10 @@ export class SellerService {
         throw new UnauthorizedException({
           statusCode: 401,
           message: 'Invalid credentials',
-          data: null,
         });
       }
 
-      const payload = { sub: seller.id, username: seller.username, role: 'SELLER' };
+      const payload = { sub: seller.id, username: seller.username, role: SellerRole.SELLER };
       const accessToken = this.jwtService.sign(payload, {
         secret: config.JWT_SECRET,
         expiresIn: config.JWT_ACCESS_EXPIRES_IN,
@@ -139,7 +136,6 @@ export class SellerService {
       throw new BadRequestException({
         statusCode: 400,
         message: 'Login failed',
-        data: null,
       });
     }
   }
@@ -158,7 +154,6 @@ export class SellerService {
         throw new UnauthorizedException({
           statusCode: 401,
           message: 'Invalid refresh token',
-          data: null,
         });
       }
 
@@ -177,7 +172,6 @@ export class SellerService {
       throw new UnauthorizedException({
         statusCode: 401,
         message: 'Invalid refresh token',
-        data: null,
       });
     }
   }
@@ -235,7 +229,6 @@ export class SellerService {
       throw new BadRequestException({
         statusCode: 400,
         message: 'Failed to retrieve sellers',
-        data: null,
       });
     }
   }
@@ -262,7 +255,6 @@ export class SellerService {
         throw new NotFoundException({
           statusCode: 404,
           message: 'Seller not found',
-          data: null,
         });
       }
 
@@ -270,7 +262,6 @@ export class SellerService {
         throw new UnauthorizedException({
           statusCode: 403,
           message: "Access denied.Seller can not get other seller's details",
-          data: null,
         });
       }
 
@@ -286,7 +277,6 @@ export class SellerService {
       throw new BadRequestException({
         statusCode: 400,
         message: 'Failed to retrieve seller',
-        data: null,
       });
     }
   }
@@ -301,7 +291,6 @@ export class SellerService {
         throw new NotFoundException({
           statusCode: 404,
           message: 'Seller not found',
-          data: null,
         });
       }
 
@@ -309,8 +298,14 @@ export class SellerService {
         throw new UnauthorizedException({
           statusCode: 403,
           message: "Access denied.Seller can not update other seller's details",
-          data: null,
         });
+      }
+
+      if (requesterRole === 'SELLER' && updateSellerDto.isActive) {
+        throw new UnauthorizedException({
+          statusCode: 403,
+          message: "Access denied.Seller can not update itself's status",
+        })
       }
 
       const allowedFields = requesterRole === 'SELLER' 
@@ -351,7 +346,6 @@ export class SellerService {
           throw new ConflictException({
             statusCode: 409,
             message: `Seller with this ${conflictField} already exists`,
-            data: null,
           });
         }
       }
@@ -388,7 +382,6 @@ export class SellerService {
       throw new BadRequestException({
         statusCode: 400,
         message: 'Failed to update seller',
-        data: null,
       });
     }
   }
@@ -403,16 +396,15 @@ export class SellerService {
         throw new NotFoundException({
           statusCode: 404,
           message: 'Seller with this email not found',
-          data: null,
         });
       }
 
-      await this.otpService.sendOTP(requestDto.email, 'password_reset');
+      const otp = await this.otpService.sendOTP(requestDto.email);
 
       return {
         statusCode: 200,
         message: 'OTP sent to your email successfully',
-        data: null,
+        otp
       };
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -421,7 +413,6 @@ export class SellerService {
       throw new BadRequestException({
         statusCode: 400,
         message: 'Failed to send OTP',
-        data: null,
       });
     }
   }
@@ -436,17 +427,6 @@ export class SellerService {
         throw new NotFoundException({
           statusCode: 404,
           message: 'Seller with this email not found',
-          data: null,
-        });
-      }
-
-      const isOTPValid = this.otpService.verifyOTP(resetDto.email, resetDto.otp, 'password_reset');
-
-      if (!isOTPValid) {
-        throw new UnauthorizedException({
-          statusCode: 401,
-          message: 'Invalid or expired OTP',
-          data: null,
         });
       }
 
@@ -460,7 +440,6 @@ export class SellerService {
       return {
         statusCode: 200,
         message: 'Password reset successfully',
-        data: null,
       };
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof UnauthorizedException) {
@@ -469,9 +448,23 @@ export class SellerService {
       throw new BadRequestException({
         statusCode: 400,
         message: 'Failed to reset password',
-        data: null,
       });
     }
+  }
+
+  async verifyOtp(verifyOtpDto: VerifyOtpDto) {
+    const seller = await this.prisma.seller.findFirst({
+      where: { email: verifyOtpDto.email },
+    });
+    
+    if (!seller) {
+      throw new NotFoundException({
+        statusCode: 404,
+        message: 'Seller with this email not found',
+      });
+    }
+    
+    return this.otpService.verifyOTP(verifyOtpDto.email, verifyOtpDto.otp);
   }
 
   async deleteSeller(id: string) {
@@ -484,7 +477,6 @@ export class SellerService {
         throw new NotFoundException({
           statusCode: 404,
           message: 'Seller not found',
-          data: null,
         });
       }
 
@@ -499,7 +491,6 @@ export class SellerService {
       return {
         statusCode: 200,
         message: 'Seller deleted successfully',
-        data: null,
       };
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -508,8 +499,20 @@ export class SellerService {
       throw new BadRequestException({
         statusCode: 400,
         message: 'Failed to delete seller',
-        data: null,
       });
     }
+  }
+
+  async logout(refresh_token: string, res: Response) {
+    let data: any;
+    try {
+      data = await this.jwtService.verify(refresh_token, {
+        secret: config.JWT_SECRET,
+      });
+    } catch (error) {
+      throw new BadRequestException(`Error on refresh token: ${error}`);
+    }
+    res.clearCookie('refresh_token_seller');
+    return { message: 'Logged out successfully' };
   }
 }
