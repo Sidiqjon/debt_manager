@@ -77,6 +77,7 @@ model Debt {
   debtor        Debtor          @relation(fields: [debtorId], references: [id], onDelete: Cascade)
   productImages ProductImage[]
   payments      Payment[]
+  paymentSchedules PaymentSchedule[]
 }
 
 model Payment {
@@ -88,6 +89,23 @@ model Payment {
   updatedAt DateTime @updatedAt
   debtor Debtor @relation(fields: [debtorId], references: [id], onDelete: Cascade)
   debt   Debt   @relation(fields: [debtId], references: [id], onDelete: Cascade)
+}
+
+model PaymentSchedule {
+  id            String   @id @default(uuid())
+  debtId        String
+  installmentNumber Int
+  amount        Decimal
+  dueDate       DateTime
+  isPaid        Boolean  @default(false)
+  paidDate      DateTime?
+  paidAmount    Decimal  @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  debt          Debt     @relation(fields: [debtId], references: [id], onDelete: Cascade)
+
+  @@unique([debtId, installmentNumber])
 }
 
 model PhoneNumber {
