@@ -7,6 +7,7 @@ import { SellerModule } from './seller/seller.module';
 import { DebtorModule } from './debtor/debtor.module';
 import { DebtModule } from './debt/debt.module';
 import { SampleModule } from './sample/sample.module';
+import { MessageModule } from './message/message.module';
 
 import { UploadModule } from './file/upload.module';
 
@@ -22,6 +23,7 @@ import { UploadModule } from './file/upload.module';
     DebtorModule,
     DebtModule,
     SampleModule,
+    MessageModule,
   ],
   controllers: [],
   providers: [],

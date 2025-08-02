@@ -15,6 +15,9 @@ export type ConfigType = {
   SMTP_PASS: string;
   SMTP_FROM: string;
   OTPSECRET: string;
+  ESKIZ_BASE_URL: string;
+  ESKIZ_EMAIL: string;
+  ESKIZ_PASSWORD: string;
 };
 
 const requiredVariables = [
@@ -29,6 +32,9 @@ const requiredVariables = [
   'SMTP_PASS',
   'SMTP_FROM',
   'OTPSECRET',
+  'ESKIZ_BASE_URL',
+  'ESKIZ_EMAIL',
+  'ESKIZ_PASSWORD',
 ];
 
 const missingVariables = requiredVariables.filter((variable) => {
@@ -54,5 +60,8 @@ export const config: ConfigType = {
   SMTP_USER: process.env.SMTP_USER as string,
   SMTP_PASS: process.env.SMTP_PASS as string,
   SMTP_FROM: process.env.SMTP_FROM as string,
-  OTPSECRET: process.env.OTPSECRET as string
+  OTPSECRET: process.env.OTPSECRET as string,
+  ESKIZ_BASE_URL: process.env.ESKIZ_BASE_URL as string,
+  ESKIZ_EMAIL: process.env.ESKIZ_EMAIL as string,
+  ESKIZ_PASSWORD: process.env.ESKIZ_PASSWORD as string
 };
