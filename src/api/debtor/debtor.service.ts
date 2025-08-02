@@ -24,8 +24,16 @@ export class DebtorService {
           } : undefined,
         },
         include: {
-          phoneNumbers: true,
-          debtorImages: true,
+          phoneNumbers: {
+            select: {
+              number: true,
+            },
+          },
+          debtorImages: {
+            select: {
+              image: true,
+            },
+          },
         },
       });
 
@@ -65,8 +73,18 @@ export class DebtorService {
           skip,
           take: limit,
           include: {
-            phoneNumbers: true,
-            debtorImages: true,
+            debts: true,
+            phoneNumbers: {
+              select: {
+                number: true,
+              },
+            },
+            debtorImages: 
+            {
+              select: {
+                image: true,
+              },
+            },
             seller: {
               select: {
                 id: true,
@@ -106,8 +124,17 @@ export class DebtorService {
       const debtor = await this.prisma.debtor.findUnique({
         where: { id },
         include: {
-          phoneNumbers: true,
-          debtorImages: true,
+          debts: true,
+          phoneNumbers: {
+            select: {
+              number: true,
+            },
+          },
+          debtorImages: {
+            select: {
+              image: true,
+            },
+          },
           seller: {
             select: {
               id: true,
@@ -202,8 +229,17 @@ export class DebtorService {
         where: { id },
         data: updateData,
         include: {
-          phoneNumbers: true,
-          debtorImages: true,
+          phoneNumbers: {
+            select: {
+              number: true,
+            },
+          },
+          debtorImages: 
+          {
+            select: {
+              image: true,
+            },
+          },
         },
       });
 

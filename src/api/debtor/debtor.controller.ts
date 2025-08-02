@@ -27,7 +27,7 @@ export class DebtorController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(AdminRole.ADMIN, AdminRole.SUPER, SellerRole.SELLER)
+  @Roles(SellerRole.SELLER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new debtor' })
   @ApiResponse({ status: 201, description: 'Debtor created successfully' })

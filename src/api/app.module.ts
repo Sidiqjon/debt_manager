@@ -5,6 +5,8 @@ import { PrismaModule } from '../common/database/prisma/prisma.module';
 import { AdminModule } from './admin/admin.module';
 import { SellerModule } from './seller/seller.module';
 import { DebtorModule } from './debtor/debtor.module';
+import { DebtModule } from './debt/debt.module';
+import { SampleModule } from './sample/sample.module';
 
 import { UploadModule } from './file/upload.module';
 
@@ -18,6 +20,8 @@ import { UploadModule } from './file/upload.module';
     UploadModule,
     SellerModule,
     DebtorModule,
+    DebtModule,
+    SampleModule,
   ],
   controllers: [],
   providers: [],
