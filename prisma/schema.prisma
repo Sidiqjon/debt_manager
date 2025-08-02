@@ -66,8 +66,8 @@ model Debt {
   id            String          @id @default(uuid())
   debtorId      String
   productName   String
-  date          DateTime
-  deadline      DeadlinePeriod  @default(ONE_MONTH)
+  date          DateTime        @default(now())
+  deadline      DeadlinePeriod  @default(TWELVE_MONTHS)
   comment       String?
   amount        Decimal         @default(0)
   paid          Boolean         @default(false)
@@ -144,15 +144,20 @@ model Sample {
   seller    Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 }
 
-
 enum DeadlinePeriod {
-  ONE_MONTH    @map("1 oy")
-  TWO_MONTHS   @map("2 oy")
-  THREE_MONTHS @map("3 oy")
-  SIX_MONTHS   @map("6 oy")
-  ONE_YEAR     @map("1 yil")
+  ONE_MONTH     @map("1 oy")
+  TWO_MONTHS    @map("2 oy")
+  THREE_MONTHS  @map("3 oy")
+  FOUR_MONTHS   @map("4 oy")
+  FIVE_MONTHS   @map("5 oy")
+  SIX_MONTHS    @map("6 oy")
+  SEVEN_MONTHS  @map("7 oy")
+  EIGHT_MONTHS  @map("8 oy")
+  NINE_MONTHS   @map("9 oy")
+  TEN_MONTHS    @map("10 oy")
+  ELEVEN_MONTHS @map("11 oy")
+  TWELVE_MONTHS @map("12 oy")
 }
-
 
 enum AdminRole {
     SUPER
