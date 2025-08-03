@@ -32,7 +32,7 @@ jobs:
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           port: 22
           source: 'dist/**,package.json,ecosystem.config.js,prisma/**'
-          target: '/home/ubuntu/nestjs-app'
+          target: '/home/ubuntu/debt-manager'
 
       - name: SSH Deploy Commands
         uses: appleboy/ssh-action@v1.0.0
@@ -43,7 +43,7 @@ jobs:
           script: |
             export NVM_DIR="$HOME/.nvm"
             source "$NVM_DIR/nvm.sh"
-            cd /home/ubuntu/nestjs-app
+            cd /home/ubuntu/debt-manager
             npm install --omit=dev
             npx prisma generate
             npx prisma migrate deploy

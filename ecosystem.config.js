@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'Debt Manager',
+      name: 'debt-manager',
       script: 'dist/main.js',
       instances: 1,
       exec_mode: 'fork',
