@@ -3,86 +3,247 @@ import { PrismaService } from '../../common/database/prisma/prisma.service';
 import { unlinkFile } from '../../common/utils/unlink-file';
 import { CreateDebtDto } from './dto/create-debt.dto';
 import { UpdateDebtDto } from './dto/update-debt.dto';
-
+import { Decimal } from '@prisma/client/runtime/library';
 @Injectable()
 export class DebtService {
     constructor(private readonly prisma: PrismaService) { }
 
     async createDebt(createDebtDto: CreateDebtDto, sellerId: string) {
-        try {
-            const debtor = await this.prisma.debtor.findUnique({
-                where: { id: createDebtDto.debtorId },
-            });
+    try {
+        const debtor = await this.prisma.debtor.findUnique({
+        where: { id: createDebtDto.debtorId },
+        });
+        
+        if (!debtor) {
+        throw new NotFoundException({
+            statusCode: 404,
+            message: 'Debtor not found',
+        });
+        }
+        
+        if (debtor.sellerId !== sellerId) {
+        throw new UnauthorizedException({
+            statusCode: 403,
+            message: 'Access denied. Seller can only create debts for their own debtors',
+        });
+        }
 
-            if (!debtor) {
-                throw new NotFoundException({
-                    statusCode: 404,
-                    message: 'Debtor not found',
-                });
-            }
+        const debtDate = createDebtDto.date ? new Date(createDebtDto.date) : new Date();
+        const deadline = createDebtDto.deadline || 'TWELVE_MONTHS';
+        
+        const monthsMap = {
+        'ONE_MONTH': 1,
+        'TWO_MONTHS': 2,
+        'THREE_MONTHS': 3,
+        'FOUR_MONTHS': 4,
+        'FIVE_MONTHS': 5,
+        'SIX_MONTHS': 6,
+        'SEVEN_MONTHS': 7,
+        'EIGHT_MONTHS': 8,
+        'NINE_MONTHS': 9,
+        'TEN_MONTHS': 10,
+        'ELEVEN_MONTHS': 11,
+        'TWELVE_MONTHS': 12,
+        };
 
-            if (debtor.sellerId !== sellerId) {
-                throw new UnauthorizedException({
-                    statusCode: 403,
-                    message: 'Access denied. Seller can only create debts for their own debtors',
-                });
-            }
-
-            const debt = await this.prisma.debt.create({
-                data: {
-                    debtorId: createDebtDto.debtorId,
-                    productName: createDebtDto.productName,
-                    date: createDebtDto.date ? new Date(createDebtDto.date) : new Date(),
-                    deadline: createDebtDto.deadline || 'TWELVE_MONTHS',
-                    comment: createDebtDto.comment,
-                    amount: createDebtDto.amount,
-                    productImages: createDebtDto.images ? {
-                        create: createDebtDto.images.map(image => ({ image })),
-                    } : undefined,
+        const totalMonths = monthsMap[deadline];
+        const debtAmount = new Decimal(createDebtDto.amount);
+        const monthlyAmount = debtAmount.div(totalMonths);
+        
+        const result = await this.prisma.$transaction(async (prisma) => {
+        const debt = await prisma.debt.create({
+            data: {
+            debtorId: createDebtDto.debtorId,
+            productName: createDebtDto.productName,
+            date: debtDate,
+            deadline: deadline,
+            comment: createDebtDto.comment,
+            amount: createDebtDto.amount,
+            productImages: createDebtDto.images ? {
+                create: createDebtDto.images.map(image => ({ image })),
+            } : undefined,
+            },
+            include: {
+            productImages: {
+                select: {
+                image: true,
                 },
-                include: {
-                    productImages: {
-                        select: {
-                            image: true,
-                        },
-                    },
-                    debtor: {
-                        select: {
-                            id: true,
-                            fullName: true,
-                            address: true,
-                            phoneNumbers: {
-                                select: {
-                                    number: true,
-                                },
-                            },
-                            seller: {
-                                select: {
-                                    id: true,
-                                    fullName: true,
-                                    username: true,
-                                },
-                            },
-                        },
+            },
+            debtor: {
+                select: {
+                id: true,
+                fullName: true,
+                address: true,
+                phoneNumbers: {
+                    select: {
+                    number: true,
                     },
                 },
-            });
+                seller: {
+                    select: {
+                    id: true,
+                    fullName: true,
+                    username: true,
+                    },
+                },
+                },
+            },
+            },
+        });
 
-            return {
-                statusCode: 201,
-                message: 'Debt created successfully',
-                data: debt,
-            };
-        } catch (error) {
-            if (error instanceof NotFoundException || error instanceof UnauthorizedException) {
-                throw error;
-            }
-            throw new BadRequestException({
-                statusCode: 400,
-                message: 'Failed to create debt',
+        const paymentSchedules: {
+          debtId: string;
+          amount: Decimal;
+          dueDate: Date;
+        }[] = [];
+        for (let i = 1; i <= totalMonths; i++) {
+            const dueDate = new Date(debtDate);
+            dueDate.setMonth(dueDate.getMonth() + i);
+
+            const amount = i === totalMonths 
+            ? debtAmount.sub(monthlyAmount.mul(totalMonths - 1))
+            : monthlyAmount;
+            
+            paymentSchedules.push({
+            debtId: debt.id,
+            amount: amount,
+            dueDate: dueDate,
             });
         }
+
+        await prisma.paymentSchedule.createMany({
+            data: paymentSchedules,
+        });
+
+        const debtWithSchedules = await prisma.debt.findUnique({
+            where: { id: debt.id },
+            include: {
+            productImages: {
+                select: {
+                image: true,
+                },
+            },
+            debtor: {
+                select: {
+                id: true,
+                fullName: true,
+                address: true,
+                phoneNumbers: {
+                    select: {
+                    number: true,
+                    },
+                },
+                seller: {
+                    select: {
+                    id: true,
+                    fullName: true,
+                    username: true,
+                    },
+                },
+                },
+            },
+            paymentSchedules: {
+                orderBy: {
+                dueDate: 'asc',
+                },
+            },
+            },
+        });
+
+        return debtWithSchedules;
+        });
+
+        return {
+        statusCode: 201,
+        message: 'Debt and payment schedule created successfully',
+        data: result,
+        };
+    } catch (error) {
+        if (error instanceof NotFoundException || error instanceof UnauthorizedException) {
+        throw error;
+        }
+        throw new BadRequestException({
+        statusCode: 400,
+        message: 'Failed to create debt',
+        });
     }
+    }
+
+    // async createDebt(createDebtDto: CreateDebtDto, sellerId: string) {
+    //     try {
+    //         const debtor = await this.prisma.debtor.findUnique({
+    //             where: { id: createDebtDto.debtorId },
+    //         });
+
+    //         if (!debtor) {
+    //             throw new NotFoundException({
+    //                 statusCode: 404,
+    //                 message: 'Debtor not found',
+    //             });
+    //         }
+
+    //         if (debtor.sellerId !== sellerId) {
+    //             throw new UnauthorizedException({
+    //                 statusCode: 403,
+    //                 message: 'Access denied. Seller can only create debts for their own debtors',
+    //             });
+    //         }
+
+    //         const debt = await this.prisma.debt.create({
+    //             data: {
+    //                 debtorId: createDebtDto.debtorId,
+    //                 productName: createDebtDto.productName,
+    //                 date: createDebtDto.date ? new Date(createDebtDto.date) : new Date(),
+    //                 deadline: createDebtDto.deadline || 'TWELVE_MONTHS',
+    //                 comment: createDebtDto.comment,
+    //                 amount: createDebtDto.amount,
+    //                 productImages: createDebtDto.images ? {
+    //                     create: createDebtDto.images.map(image => ({ image })),
+    //                 } : undefined,
+    //             },
+    //             include: {
+    //                 productImages: {
+    //                     select: {
+    //                         image: true,
+    //                     },
+    //                 },
+    //                 debtor: {
+    //                     select: {
+    //                         id: true,
+    //                         fullName: true,
+    //                         address: true,
+    //                         phoneNumbers: {
+    //                             select: {
+    //                                 number: true,
+    //                             },
+    //                         },
+    //                         seller: {
+    //                             select: {
+    //                                 id: true,
+    //                                 fullName: true,
+    //                                 username: true,
+    //                             },
+    //                         },
+    //                     },
+    //                 },
+    //             },
+    //         });
+
+    //         return {
+    //             statusCode: 201,
+    //             message: 'Debt created successfully',
+    //             data: debt,
+    //         };
+    //     } catch (error) {
+    //         if (error instanceof NotFoundException || error instanceof UnauthorizedException) {
+    //             throw error;
+    //         }
+    //         throw new BadRequestException({
+    //             statusCode: 400,
+    //             message: 'Failed to create debt',
+    //         });
+    //     }
+    // }
 
     async getAllDebts(
         page: number = 1,

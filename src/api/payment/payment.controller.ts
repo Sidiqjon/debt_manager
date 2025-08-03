@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
   Query,
@@ -9,11 +10,11 @@ import {
   Req
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
-import { CreatePaymentDto, CreateScheduledPaymentDto, PaymentQueryDto } from './dto/create-payment.dto';
+import { CreatePaymentDto, PaymentQueryDto } from './dto/create-payment.dto';
 import { JwtAuthGuard } from '../../common/guard/jwt-auth.guard';
 import { RolesGuard } from '../../common/guard/roles.guard';
 import { Roles } from '../../common/decorator/roles.decorator';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 
 @ApiTags('Payments')
 @ApiBearerAuth()
@@ -24,10 +25,13 @@ export class PaymentController {
 
   @Post()
   @Roles('SELLER')
-  @ApiOperation({ summary: 'Create a new payment' })
+  @ApiOperation({ 
+    summary: 'Create a new payment',
+    description: 'Create payment with three types: monthly payment, any amount payment, or multiple months payment'
+  })
   @ApiResponse({ status: 201, description: 'Payment created successfully' })
-  @ApiResponse({ status: 400, description: 'Bad request' })
-  @ApiResponse({ status: 404, description: 'Debt not found' })
+  @ApiResponse({ status: 400, description: 'Bad request - Invalid payment data' })
+  @ApiResponse({ status: 404, description: 'Debt not found or access denied' })
   async createPayment(
     @Req() req: any,
     @Body() createPaymentDto: CreatePaymentDto
@@ -35,22 +39,12 @@ export class PaymentController {
     return this.paymentService.createPayment(req.user.id, createPaymentDto);
   }
 
-  @Post('schedule')
-  @Roles('SELLER')
-  @ApiOperation({ summary: 'Create payment schedule for a debt' })
-  @ApiResponse({ status: 201, description: 'Payment schedule created successfully' })
-  @ApiResponse({ status: 400, description: 'Bad request' })
-  @ApiResponse({ status: 404, description: 'Debt not found' })
-  async createScheduledPayment(
-    @Req() req: any,
-    @Body() createScheduledPaymentDto: CreateScheduledPaymentDto
-  ) {
-    return this.paymentService.createScheduledPayment(req.user.id, createScheduledPaymentDto);
-  }
-
   @Get()
   @Roles('SELLER', 'ADMIN', 'SUPER')
-  @ApiOperation({ summary: 'Get all payments with pagination and search' })
+  @ApiOperation({ 
+    summary: 'Get all payments with pagination and search',
+    description: 'Retrieve payments with filtering, searching, and pagination. Sellers see only their payments, admins see all.'
+  })
   @ApiResponse({ status: 200, description: 'Payments retrieved successfully' })
   async getAllPayments(
     @Req() req: any,
@@ -61,7 +55,8 @@ export class PaymentController {
 
   @Get(':id')
   @Roles('SELLER', 'ADMIN', 'SUPER')
-  @ApiOperation({ summary: 'Get payment by ID' })
+  @ApiOperation({ summary: 'Get payment details by ID' })
+  @ApiParam({ name: 'id', description: 'Payment ID' })
   @ApiResponse({ status: 200, description: 'Payment retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Payment not found' })
   async getPaymentById(
@@ -71,11 +66,31 @@ export class PaymentController {
     return this.paymentService.getPaymentById(req.user.id, id, req.user.role);
   }
 
+  @Delete(':id')
+  @Roles('SELLER')
+  @ApiOperation({ 
+    summary: 'Delete a payment',
+    description: 'Delete payment and revert payment schedule status. Only sellers can delete their own payments.'
+  })
+  @ApiParam({ name: 'id', description: 'Payment ID' })
+  @ApiResponse({ status: 200, description: 'Payment deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Payment not found or access denied' })
+  async deletePayment(
+    @Req() req: any,
+    @Param('id') id: string
+  ) {
+    return this.paymentService.deletePayment(req.user.id, id);
+  }
+
   @Get('debtor/:debtorId/history')
   @Roles('SELLER', 'ADMIN', 'SUPER')
-  @ApiOperation({ summary: 'Get payment history for a debtor' })
+  @ApiOperation({ 
+    summary: 'Get payment history for a debtor',
+    description: 'Retrieve complete payment history and summary for a specific debtor'
+  })
+  @ApiParam({ name: 'debtorId', description: 'Debtor ID' })
   @ApiResponse({ status: 200, description: 'Payment history retrieved successfully' })
-  @ApiResponse({ status: 404, description: 'Debtor not found' })
+  @ApiResponse({ status: 404, description: 'Debtor not found or access denied' })
   async getDebtorPaymentHistory(
     @Req() req: any,
     @Param('debtorId') debtorId: string
@@ -85,9 +100,13 @@ export class PaymentController {
 
   @Get('debt/:debtId/schedule')
   @Roles('SELLER', 'ADMIN', 'SUPER')
-  @ApiOperation({ summary: 'Get payment schedule for a debt' })
+  @ApiOperation({ 
+    summary: 'Get payment schedule for a debt',
+    description: 'Retrieve detailed payment schedule with progress and recent payments for a specific debt'
+  })
+  @ApiParam({ name: 'debtId', description: 'Debt ID' })
   @ApiResponse({ status: 200, description: 'Payment schedule retrieved successfully' })
-  @ApiResponse({ status: 404, description: 'Debt not found' })
+  @ApiResponse({ status: 404, description: 'Debt not found or access denied' })
   async getDebtPaymentSchedule(
     @Req() req: any,
     @Param('debtId') debtId: string

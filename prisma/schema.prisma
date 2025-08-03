@@ -94,7 +94,6 @@ model Payment {
 model PaymentSchedule {
   id            String   @id @default(uuid())
   debtId        String
-  installmentNumber Int
   amount        Decimal
   dueDate       DateTime
   isPaid        Boolean  @default(false)
@@ -104,8 +103,6 @@ model PaymentSchedule {
   updatedAt     DateTime @updatedAt
 
   debt          Debt     @relation(fields: [debtId], references: [id], onDelete: Cascade)
-
-  @@unique([debtId, installmentNumber])
 }
 
 model PhoneNumber {

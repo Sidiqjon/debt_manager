@@ -1,12 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsUUID, IsDecimal, IsOptional, IsString, IsEnum, IsDateString, Min } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsUUID, IsOptional, IsString, IsEnum, IsDateString, Min, IsNumber, IsArray, ArrayMinSize } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { Decimal } from '@prisma/client/runtime/library';
 
 export enum PaymentType {
-  FULL_PAYMENT = 'FULL_PAYMENT',
-  PARTIAL_PAYMENT = 'PARTIAL_PAYMENT',
-  SCHEDULED_PAYMENT = 'SCHEDULED_PAYMENT'
+  MONTHLY_PAYMENT = 'MONTHLY_PAYMENT',
+  ANY_AMOUNT_PAYMENT = 'ANY_AMOUNT_PAYMENT',
+  MULTIPLE_MONTHS_PAYMENT = 'MULTIPLE_MONTHS_PAYMENT'
 }
 
 export class CreatePaymentDto {
@@ -25,21 +25,35 @@ export class CreatePaymentDto {
   debtId: string;
 
   @ApiProperty({
-    description: 'Payment amount',
-    example: 100000,
-    type: 'number'
-  })
-  @Transform(({ value }) => new Decimal(value))
-  @Min(0.01)
-  amount: Decimal;
-
-  @ApiProperty({
     description: 'Payment type',
     enum: PaymentType,
-    example: PaymentType.PARTIAL_PAYMENT
+    example: PaymentType.MONTHLY_PAYMENT,
+    enumName: 'PaymentType'
   })
   @IsEnum(PaymentType)
   paymentType: PaymentType;
+
+  @ApiPropertyOptional({
+    description: 'Payment amount (required for ANY_AMOUNT_PAYMENT)',
+    example: 500000,
+    type: 'number'
+  })
+  @IsOptional()
+  @Transform(({ value }) => value ? new Decimal(value) : undefined)
+  @Type(() => Number)
+  @Min(0.01)
+  amount?: Decimal;
+
+  @ApiPropertyOptional({
+    description: 'Array of payment schedule IDs for MULTIPLE_MONTHS_PAYMENT',
+    example: ['123e4567-e89b-12d3-a456-426614174001', '123e4567-e89b-12d3-a456-426614174002'],
+    type: [String]
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsUUID('4', { each: true })
+  scheduleIds?: string[];
 
   @ApiPropertyOptional({
     description: 'Payment date (optional, defaults to now)',
@@ -48,24 +62,6 @@ export class CreatePaymentDto {
   @IsOptional()
   @IsDateString()
   paymentDate?: string;
-}
-
-export class CreateScheduledPaymentDto {
-  @ApiProperty({
-    description: 'Debt ID',
-    example: '123e4567-e89b-12d3-a456-426614174000'
-  })
-  @IsUUID()
-  debtId: string;
-
-  @ApiProperty({
-    description: 'Number of months for payment schedule',
-    example: 6,
-    minimum: 1,
-    maximum: 12
-  })
-  @Min(1)
-  months: number;
 }
 
 export class PaymentQueryDto {
@@ -90,7 +86,7 @@ export class PaymentQueryDto {
   limit?: number = 10;
 
   @ApiPropertyOptional({
-    description: 'Search by debtor name',
+    description: 'Search by debtor name or product name',
     example: 'John Doe'
   })
   @IsOptional()
@@ -112,4 +108,12 @@ export class PaymentQueryDto {
   @IsOptional()
   @IsUUID()
   debtId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Payment type filter',
+    enum: PaymentType
+  })
+  @IsOptional()
+  @IsEnum(PaymentType)
+  paymentType?: PaymentType;
 }
