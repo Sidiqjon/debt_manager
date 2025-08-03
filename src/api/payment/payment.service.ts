@@ -13,8 +13,6 @@ export class PaymentService {
     const debt = await this.prisma.debt.findFirst({
       where: {
         id: debtId,
-        debtorId: debtorId,
-        debtor: { sellerId }
       },
       include: {
         debtor: true,
@@ -283,23 +281,8 @@ export class PaymentService {
     const payment = await this.prisma.payment.findFirst({
       where,
       include: {
-        debt: {
-          include: {
-            productImages: true,
-            payments: {
-              orderBy: { createdAt: 'desc' }
-            },
-            paymentSchedules: {
-              orderBy: { dueDate: 'asc' }
-            }
-          }
-        },
-        debtor: {
-          include: {
-            phoneNumbers: true,
-            debtorImages: true
-          }
-        }
+        debt: true,
+        debtor: true
       }
     });
 

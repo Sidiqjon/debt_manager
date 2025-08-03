@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsUUID, IsOptional, IsString, IsEnum, IsDateString, Min, IsNumber, IsArray, ArrayMinSize } from 'class-validator';
+import { IsUUID, IsOptional, IsString, IsEnum, IsDateString, Min, IsNumber, IsArray, ArrayMinSize, IsPositive } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -40,8 +40,6 @@ export class CreatePaymentDto {
   })
   @IsOptional()
   @Transform(({ value }) => value ? new Decimal(value) : undefined)
-  @Type(() => Number)
-  @Min(0.01)
   amount?: Decimal;
 
   @ApiPropertyOptional({
