@@ -3,7 +3,7 @@ import { PrismaService } from '../../common/database/prisma/prisma.service';
 import { unlinkFile } from '../../common/utils/unlink-file';
 import { CreateDebtorDto } from './dto/create-debtor.dto';
 import { UpdateDebtorDto } from './dto/update-debtor.dto';
-
+import { Decimal } from '@prisma/client/runtime/library';
 @Injectable()
 export class DebtorService {
   constructor(private readonly prisma: PrismaService) {}
@@ -50,15 +50,14 @@ export class DebtorService {
     }
   }
 
+
   async getAllDebtors(page: number = 1, limit: number = 10, search?: string, requesterId?: string, requesterRole?: string) {
     try {
       const skip = (page - 1) * limit;
       let where: any = {};
-
       if (requesterRole === 'SELLER') {
         where.sellerId = requesterId;
       }
-
       if (search) {
         where.OR = [
           { fullName: { contains: search, mode: 'insensitive' } },
@@ -73,14 +72,17 @@ export class DebtorService {
           skip,
           take: limit,
           include: {
-            debts: true,
+            debts: {
+              include: {
+                paymentSchedules: true
+              }
+            },
             phoneNumbers: {
               select: {
                 number: true,
               },
             },
-            debtorImages: 
-            {
+            debtorImages: {
               select: {
                 image: true,
               },
@@ -98,11 +100,33 @@ export class DebtorService {
         this.prisma.debtor.count({ where }),
       ]);
 
+      // Calculate remaining debt balance for each debtor and clean response
+      const debtorsWithBalance = debtors.map(debtor => {
+        // Calculate remaining debt balance for this debtor
+        let remainingDebtBalance = new Decimal(0);
+        
+        debtor.debts.forEach(debt => {
+          debt.paymentSchedules.forEach(schedule => {
+            if (!schedule.isPaid) {
+              // Add unpaid amount from this schedule
+              const unpaidAmount = schedule.amount.sub(schedule.paidAmount);
+              remainingDebtBalance = remainingDebtBalance.add(unpaidAmount);
+            }
+          });
+        });
+
+        return {
+          ...debtor,
+          debts: debtor.debts.map(({ paymentSchedules, ...debt }) => debt), // Remove payment schedules from response
+          remainingDebtBalance
+        };
+      });
+
       return {
         statusCode: 200,
         message: 'Debtors retrieved successfully',
         data: {
-          debtors,
+          debtors: debtorsWithBalance,
           pagination: {
             page,
             limit,
@@ -119,12 +143,86 @@ export class DebtorService {
     }
   }
 
+
+  // async getAllDebtors(page: number = 1, limit: number = 10, search?: string, requesterId?: string, requesterRole?: string) {
+  //   try {
+  //     const skip = (page - 1) * limit;
+  //     let where: any = {};
+
+  //     if (requesterRole === 'SELLER') {
+  //       where.sellerId = requesterId;
+  //     }
+
+  //     if (search) {
+  //       where.OR = [
+  //         { fullName: { contains: search, mode: 'insensitive' } },
+  //         { address: { contains: search, mode: 'insensitive' } },
+  //         { phoneNumbers: { some: { number: { contains: search } } } },
+  //       ];
+  //     }
+
+  //     const [debtors, total] = await Promise.all([
+  //       this.prisma.debtor.findMany({
+  //         where,
+  //         skip,
+  //         take: limit,
+  //         include: {
+  //           debts: true,
+  //           phoneNumbers: {
+  //             select: {
+  //               number: true,
+  //             },
+  //           },
+  //           debtorImages: 
+  //           {
+  //             select: {
+  //               image: true,
+  //             },
+  //           },
+  //           seller: {
+  //             select: {
+  //               id: true,
+  //               fullName: true,
+  //               username: true,
+  //             },
+  //           },
+  //         },
+  //         orderBy: { createdAt: 'desc' },
+  //       }),
+  //       this.prisma.debtor.count({ where }),
+  //     ]);
+
+  //     return {
+  //       statusCode: 200,
+  //       message: 'Debtors retrieved successfully',
+  //       data: {
+  //         debtors,
+  //         pagination: {
+  //           page,
+  //           limit,
+  //           total,
+  //           pages: Math.ceil(total / limit),
+  //         },
+  //       },
+  //     };
+  //   } catch (error) {
+  //     throw new BadRequestException({
+  //       statusCode: 400,
+  //       message: 'Failed to retrieve debtors',
+  //     });
+  //   }
+  // }
+
   async getDebtorById(id: string, requesterId?: string, requesterRole?: string) {
     try {
       const debtor = await this.prisma.debtor.findUnique({
         where: { id },
         include: {
-          debts: true,
+          debts: {
+            include: {
+              paymentSchedules: true
+            }
+          },
           phoneNumbers: {
             select: {
               number: true,
@@ -159,10 +257,30 @@ export class DebtorService {
         });
       }
 
+      // Calculate remaining debt balance for this debtor
+      let remainingDebtBalance = new Decimal(0);
+      
+      debtor.debts.forEach(debt => {
+        debt.paymentSchedules.forEach(schedule => {
+          if (!schedule.isPaid) {
+            // Add unpaid amount from this schedule
+            const unpaidAmount = schedule.amount.sub(schedule.paidAmount);
+            remainingDebtBalance = remainingDebtBalance.add(unpaidAmount);
+          }
+        });
+      });
+
       return {
         statusCode: 200,
         message: 'Debtor retrieved successfully',
-        data: debtor,
+        data: {
+          ...debtor,
+          debts: debtor.debts.map(debt => ({
+            ...debt,
+            paymentSchedules: undefined // Remove payment schedules from response
+          })).map(({ paymentSchedules, ...debt }) => debt), // Clean way to exclude paymentSchedules
+          remainingDebtBalance
+        },
       };
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof UnauthorizedException) {
@@ -174,6 +292,62 @@ export class DebtorService {
       });
     }
   }
+
+  // async getDebtorById(id: string, requesterId?: string, requesterRole?: string) {
+  //   try {
+  //     const debtor = await this.prisma.debtor.findUnique({
+  //       where: { id },
+  //       include: {
+  //         debts: true,
+  //         phoneNumbers: {
+  //           select: {
+  //             number: true,
+  //           },
+  //         },
+  //         debtorImages: {
+  //           select: {
+  //             image: true,
+  //           },
+  //         },
+  //         seller: {
+  //           select: {
+  //             id: true,
+  //             fullName: true,
+  //             username: true,
+  //           },
+  //         },
+  //       },
+  //     });
+
+  //     if (!debtor) {
+  //       throw new NotFoundException({
+  //         statusCode: 404,
+  //         message: 'Debtor not found',
+  //       });
+  //     }
+
+  //     if (requesterRole === 'SELLER' && requesterId !== debtor.sellerId) {
+  //       throw new UnauthorizedException({
+  //         statusCode: 403,
+  //         message: 'Access denied. Seller can only access their own debtors',
+  //       });
+  //     }
+
+  //     return {
+  //       statusCode: 200,
+  //       message: 'Debtor retrieved successfully',
+  //       data: debtor,
+  //     };
+  //   } catch (error) {
+  //     if (error instanceof NotFoundException || error instanceof UnauthorizedException) {
+  //       throw error;
+  //     }
+  //     throw new BadRequestException({
+  //       statusCode: 400,
+  //       message: 'Failed to retrieve debtor',
+  //     });
+  //   }
+  // }
 
   async updateDebtor(id: string, updateDebtorDto: UpdateDebtorDto, requesterId?: string, requesterRole?: string) {
     try {
