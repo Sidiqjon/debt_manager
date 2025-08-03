@@ -27,7 +27,7 @@ export default class Application {
   app.use(cookieParser());
 
   const config_swagger = new DocumentBuilder()
-    .setTitle('Debt Manager API!')
+    .setTitle('Debt Manager API!!!')
     .setDescription('The Debt Manager API description!')
     .setVersion('1.0')
     .addSecurityRequirements('bearer', ['bearer'])
