@@ -27,7 +27,7 @@ export class PaymentController {
   @Roles('SELLER')
   @ApiOperation({ 
     summary: 'Create a new payment',
-    description: 'Create payment with three types: monthly payment, any amount payment, or multiple months payment'
+    description: 'Create payment with three types: MONTHLY_PAYMENT, ANY_AMOUNT_PAYMENT, or MULTIPLE_MONTHS_PAYMENT'
   })
   @ApiResponse({ status: 201, description: 'Payment created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request - Invalid payment data' })

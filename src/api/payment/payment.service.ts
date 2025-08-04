@@ -8,7 +8,7 @@ export class PaymentService {
   constructor(private prisma: PrismaService) {}
 
   async createPayment(sellerId: string, createPaymentDto: CreatePaymentDto) {
-    const { debtorId, debtId, paymentType, amount, scheduleIds, paymentDate } = createPaymentDto;
+    const { debtId, paymentType, amount, scheduleIds, paymentDate } = createPaymentDto;
 
     const debt = await this.prisma.debt.findFirst({
       where: {
