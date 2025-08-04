@@ -279,7 +279,7 @@ export class AdminService {
 
     res.clearCookie('refresh_token_admin', {
       httpOnly: true,
-      secure: config.NODE_ENV === 'production',
+      secure: false,
       sameSite: 'lax',
       path: '/', 
     });
@@ -287,7 +287,7 @@ export class AdminService {
 
     res.cookie('refresh_token_admin', refreshToken, {
     httpOnly: true,
-    secure: config.NODE_ENV === 'production', 
+    secure: false, 
     sameSite: 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000, 
     path: '/',
@@ -343,7 +343,14 @@ export class AdminService {
       throw new BadRequestException(`Error on refresh token: ${error}`);
     }
 
-    res.clearCookie('refresh_token_admin');
+    res.clearCookie('refresh_token_admin', {
+      httpOnly: true,
+      secure: false, 
+      sameSite: 'lax',
+      path: '/',
+    });
+  
+
     return { message: 'Logged out successfully' };
   }
 
