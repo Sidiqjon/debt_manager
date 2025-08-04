@@ -259,13 +259,6 @@ export class PaymentService {
       this.prisma.payment.count({ where })
     ]);
 
-    let filteredPayments = payments;
-    if (userRole === 'SELLER') {
-      filteredPayments = payments.filter(payment => 
-        payment.debtor && payment.debtor.sellerId === sellerId
-      );
-    }
-
     return {
       statusCode: 200,
       message: 'Payments retrieved successfully',
@@ -296,10 +289,6 @@ export class PaymentService {
 
     if (!payment) {
       throw new NotFoundException('Payment not found');
-    }
-
-    if (userRole === 'SELLER' && payment.debtor.sellerId !== sellerId) {
-      throw new NotFoundException('Payment not found or access denied'); 
     }
 
     return {
