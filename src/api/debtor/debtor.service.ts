@@ -276,10 +276,7 @@ export class DebtorService {
         message: 'Debtor retrieved successfully',
         data: {
           ...debtor,
-          debts: debtor.debts.map(debt => ({
-            ...debt,
-            paymentSchedules: undefined // Remove payment schedules from response
-          })).map(({ paymentSchedules, ...debt }) => debt), // Clean way to exclude paymentSchedules
+          debts: debtor.debts, 
           remainingDebtBalance
         },
       };
