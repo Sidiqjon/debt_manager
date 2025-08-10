@@ -117,10 +117,11 @@ export class DebtorService {
 
         return {
           ...debtor,
-          debts: debtor.debts.map(({ paymentSchedules, ...debt }) => debt), // Remove payment schedules from response
+          debts: debtor.debts, // Remove payment schedules from response
           remainingDebtBalance
         };
       });
+      // : debtor.debts.map(({ paymentSchedules, ...debt }) => debt)
 
       return {
         statusCode: 200,
