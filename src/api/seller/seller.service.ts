@@ -339,20 +339,20 @@ export class SellerService {
 
   async getSellerById(id: string, requesterId?: string, requesterRole?: string) {
     try {
-      const seller = await this.prisma.seller.findUnique({
+      let seller = await this.prisma.seller.findUnique({
         where: { id },
-        select: {
-          id: true,
-          fullName: true,
-          phoneNumber: true,
-          email: true,
-          username: true,
-          image: true,
-          balance: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
+        include: {
+          debtors: {
+            include: {
+              debts: {
+                include: {
+                  paymentSchedules: true
+                }
+              }
+            }
+          },
         },
+        
       });
 
       if (!seller) {
@@ -368,6 +368,8 @@ export class SellerService {
           message: "Access denied.Seller can not get other seller's details",
         });
       }
+
+      seller = seller.password ? { ...seller, password: "" } : seller;
 
       // Get additional seller statistics
       const [totalDebtBalance, totalDebtorsCount, delayedPaymentsCount] = await Promise.all([
