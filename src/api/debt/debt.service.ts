@@ -9,164 +9,164 @@ export class DebtService {
     constructor(private readonly prisma: PrismaService) { }
 
     async createDebt(createDebtDto: CreateDebtDto, sellerId: string) {
-    try {
-        const debtor = await this.prisma.debtor.findUnique({
-        where: { id: createDebtDto.debtorId },
-        });
-        
-        if (!debtor) {
-        throw new NotFoundException({
-            statusCode: 404,
-            message: 'Debtor not found',
-        });
-        }
-        
-        if (debtor.sellerId !== sellerId) {
-        throw new UnauthorizedException({
-            statusCode: 403,
-            message: 'Access denied. Seller can only create debts for their own debtors',
-        });
-        }
+        try {
+            const debtor = await this.prisma.debtor.findUnique({
+                where: { id: createDebtDto.debtorId },
+            });
 
-        const debtDate = createDebtDto.date ? new Date(createDebtDto.date) : new Date();
-        const deadline = createDebtDto.deadline || 'TWELVE_MONTHS';
-        
-        const monthsMap = {
-        'ONE_MONTH': 1,
-        'TWO_MONTHS': 2,
-        'THREE_MONTHS': 3,
-        'FOUR_MONTHS': 4,
-        'FIVE_MONTHS': 5,
-        'SIX_MONTHS': 6,
-        'SEVEN_MONTHS': 7,
-        'EIGHT_MONTHS': 8,
-        'NINE_MONTHS': 9,
-        'TEN_MONTHS': 10,
-        'ELEVEN_MONTHS': 11,
-        'TWELVE_MONTHS': 12,
-        };
+            if (!debtor) {
+                throw new NotFoundException({
+                    statusCode: 404,
+                    message: 'Debtor not found',
+                });
+            }
 
-        const totalMonths = monthsMap[deadline];
-        const debtAmount = new Decimal(createDebtDto.amount);
-        const monthlyAmount = debtAmount.div(totalMonths);
-        
-        const result = await this.prisma.$transaction(async (prisma) => {
-        const debt = await prisma.debt.create({
-            data: {
-            debtorId: createDebtDto.debtorId,
-            productName: createDebtDto.productName,
-            date: debtDate,
-            deadline: deadline,
-            comment: createDebtDto.comment,
-            amount: createDebtDto.amount,
-            productImages: createDebtDto.images ? {
-                create: createDebtDto.images.map(image => ({ image })),
-            } : undefined,
-            },
-            include: {
-            productImages: {
-                select: {
-                image: true,
-                },
-            },
-            debtor: {
-                select: {
-                id: true,
-                fullName: true,
-                address: true,
-                phoneNumbers: {
-                    select: {
-                    number: true,
+            if (debtor.sellerId !== sellerId) {
+                throw new UnauthorizedException({
+                    statusCode: 403,
+                    message: 'Access denied. Seller can only create debts for their own debtors',
+                });
+            }
+
+            const debtDate = createDebtDto.date ? new Date(createDebtDto.date) : new Date();
+            const deadline = createDebtDto.deadline || 'TWELVE_MONTHS';
+
+            const monthsMap = {
+                'ONE_MONTH': 1,
+                'TWO_MONTHS': 2,
+                'THREE_MONTHS': 3,
+                'FOUR_MONTHS': 4,
+                'FIVE_MONTHS': 5,
+                'SIX_MONTHS': 6,
+                'SEVEN_MONTHS': 7,
+                'EIGHT_MONTHS': 8,
+                'NINE_MONTHS': 9,
+                'TEN_MONTHS': 10,
+                'ELEVEN_MONTHS': 11,
+                'TWELVE_MONTHS': 12,
+            };
+
+            const totalMonths = monthsMap[deadline];
+            const debtAmount = new Decimal(createDebtDto.amount);
+            const monthlyAmount = debtAmount.div(totalMonths);
+
+            const result = await this.prisma.$transaction(async (prisma) => {
+                const debt = await prisma.debt.create({
+                    data: {
+                        debtorId: createDebtDto.debtorId,
+                        productName: createDebtDto.productName,
+                        date: debtDate,
+                        deadline: deadline,
+                        comment: createDebtDto.comment,
+                        amount: createDebtDto.amount,
+                        productImages: createDebtDto.images ? {
+                            create: createDebtDto.images.map(image => ({ image })),
+                        } : undefined,
                     },
-                },
-                seller: {
-                    select: {
-                    id: true,
-                    fullName: true,
-                    username: true,
+                    include: {
+                        productImages: {
+                            select: {
+                                image: true,
+                            },
+                        },
+                        debtor: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                address: true,
+                                phoneNumbers: {
+                                    select: {
+                                        number: true,
+                                    },
+                                },
+                                seller: {
+                                    select: {
+                                        id: true,
+                                        fullName: true,
+                                        username: true,
+                                    },
+                                },
+                            },
+                        },
                     },
-                },
-                },
-            },
-            },
-        });
+                });
 
-        const paymentSchedules: {
-          debtId: string;
-          amount: Decimal;
-          dueDate: Date;
-        }[] = [];
-        for (let i = 1; i <= totalMonths; i++) {
-            const dueDate = new Date(debtDate);
-            dueDate.setMonth(dueDate.getMonth() + i);
+                const paymentSchedules: {
+                    debtId: string;
+                    amount: Decimal;
+                    dueDate: Date;
+                }[] = [];
+                for (let i = 1; i <= totalMonths; i++) {
+                    const dueDate = new Date(debtDate);
+                    dueDate.setMonth(dueDate.getMonth() + i);
 
-            const amount = i === totalMonths 
-            ? debtAmount.sub(monthlyAmount.mul(totalMonths - 1))
-            : monthlyAmount;
-            
-            paymentSchedules.push({
-            debtId: debt.id,
-            amount: amount,
-            dueDate: dueDate,
+                    const amount = i === totalMonths
+                        ? debtAmount.sub(monthlyAmount.mul(totalMonths - 1))
+                        : monthlyAmount;
+
+                    paymentSchedules.push({
+                        debtId: debt.id,
+                        amount: amount,
+                        dueDate: dueDate,
+                    });
+                }
+
+                await prisma.paymentSchedule.createMany({
+                    data: paymentSchedules,
+                });
+
+                const debtWithSchedules = await prisma.debt.findUnique({
+                    where: { id: debt.id },
+                    include: {
+                        productImages: {
+                            select: {
+                                image: true,
+                            },
+                        },
+                        debtor: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                address: true,
+                                phoneNumbers: {
+                                    select: {
+                                        number: true,
+                                    },
+                                },
+                                seller: {
+                                    select: {
+                                        id: true,
+                                        fullName: true,
+                                        username: true,
+                                    },
+                                },
+                            },
+                        },
+                        paymentSchedules: {
+                            orderBy: {
+                                dueDate: 'asc',
+                            },
+                        },
+                    },
+                });
+
+                return debtWithSchedules;
+            });
+
+            return {
+                statusCode: 201,
+                message: 'Debt and payment schedule created successfully',
+                data: result,
+            };
+        } catch (error) {
+            if (error instanceof NotFoundException || error instanceof UnauthorizedException) {
+                throw error;
+            }
+            throw new BadRequestException({
+                statusCode: 400,
+                message: 'Failed to create debt',
             });
         }
-
-        await prisma.paymentSchedule.createMany({
-            data: paymentSchedules,
-        });
-
-        const debtWithSchedules = await prisma.debt.findUnique({
-            where: { id: debt.id },
-            include: {
-            productImages: {
-                select: {
-                image: true,
-                },
-            },
-            debtor: {
-                select: {
-                id: true,
-                fullName: true,
-                address: true,
-                phoneNumbers: {
-                    select: {
-                    number: true,
-                    },
-                },
-                seller: {
-                    select: {
-                    id: true,
-                    fullName: true,
-                    username: true,
-                    },
-                },
-                },
-            },
-            paymentSchedules: {
-                orderBy: {
-                dueDate: 'asc',
-                },
-            },
-            },
-        });
-
-        return debtWithSchedules;
-        });
-
-        return {
-        statusCode: 201,
-        message: 'Debt and payment schedule created successfully',
-        data: result,
-        };
-    } catch (error) {
-        if (error instanceof NotFoundException || error instanceof UnauthorizedException) {
-        throw error;
-        }
-        throw new BadRequestException({
-        statusCode: 400,
-        message: 'Failed to create debt',
-        });
-    }
     }
 
     // async createDebt(createDebtDto: CreateDebtDto, sellerId: string) {
@@ -384,6 +384,7 @@ export class DebtService {
             const debt = await this.prisma.debt.findUnique({
                 where: { id },
                 include: {
+                    paymentSchedules: true,
                     productImages: {
                         select: {
                             image: true,
@@ -529,10 +530,11 @@ export class DebtService {
                             id: true,
                             fullName: true,
                             address: true,
-                            phoneNumbers: { 
+                            phoneNumbers: {
                                 select: {
                                     number: true,
-                            }},
+                                }
+                            },
                             seller: {
                                 select: {
                                     id: true,
@@ -551,6 +553,58 @@ export class DebtService {
                     },
                 },
             });
+
+            if (updateDebtDto.amount !== undefined || updateDebtDto.date !== undefined || updateDebtDto.deadline !== undefined) {
+                await this.prisma.paymentSchedule.deleteMany({
+                    where: { debtId: id },
+                })
+
+                const debtDate = updateDebtDto.date ? new Date(updateDebtDto.date) : new Date();
+                const deadline = updateDebtDto.deadline || existingDebt.deadline;
+
+                const monthsMap = {
+                    'ONE_MONTH': 1,
+                    'TWO_MONTHS': 2,
+                    'THREE_MONTHS': 3,
+                    'FOUR_MONTHS': 4,
+                    'FIVE_MONTHS': 5,
+                    'SIX_MONTHS': 6,
+                    'SEVEN_MONTHS': 7,
+                    'EIGHT_MONTHS': 8,
+                    'NINE_MONTHS': 9,
+                    'TEN_MONTHS': 10,
+                    'ELEVEN_MONTHS': 11,
+                    'TWELVE_MONTHS': 12,
+                };
+
+                const totalMonths = monthsMap[deadline];
+                const debtAmount = new Decimal(updateDebtDto.amount ?? existingDebt.amount);
+                const monthlyAmount = debtAmount.div(totalMonths);
+
+                const paymentSchedules: {
+                    debtId: string;
+                    amount: Decimal;
+                    dueDate: Date;
+                }[] = [];
+                for (let i = 1; i <= totalMonths; i++) {
+                    const dueDate = new Date(debtDate);
+                    dueDate.setMonth(dueDate.getMonth() + i);
+
+                    const amount = i === totalMonths
+                        ? debtAmount.sub(monthlyAmount.mul(totalMonths - 1))
+                        : monthlyAmount;
+
+                    paymentSchedules.push({
+                        debtId: id,
+                        amount: amount,
+                        dueDate: dueDate,
+                    });
+                }
+
+                await this.prisma.paymentSchedule.createMany({
+                    data: paymentSchedules,
+                });
+            }
 
             const totalPaid = updatedDebt.payments.reduce((sum, payment) => sum + Number(payment.amount), 0);
             const remainingAmount = Number(updatedDebt.amount) - totalPaid;
