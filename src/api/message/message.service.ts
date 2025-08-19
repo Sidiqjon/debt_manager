@@ -358,6 +358,28 @@ export class MessageService {
     }
   }
 
+  async deleteAllMessages(debtorId: string) {
+    try {
+
+      await this.prisma.message.deleteMany({
+        where: { to: debtorId },
+      });
+
+      return {
+        statusCode: 200,
+        message: 'Conversation deleted successfully',
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new BadRequestException({
+        statusCode: 400,
+        message: 'Failed to delete conversation',
+      });
+    }
+  }
+
   async resendMessage(id: string, requesterId?: string, requesterRole?: string) {
     try {
       const message = await this.prisma.message.findUnique({

@@ -127,6 +127,17 @@ export class MessageController {
     return this.messageService.deleteMessage(id, requesterId, requesterRole);
   }
 
+  @Delete(":id")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(AdminRole.ADMIN, AdminRole.SUPER, SellerRole.SELLER)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete all messages from a debtor', description: 'Deletes all messages from a debtor' })
+  @ApiResponse({ status: 200, description: 'Messages deleted successfully' })
+  @ApiResponse({ status: 403, description: 'Access denied' })
+  async deleteAllMessages(@Param('debtorId') debtorId: string) {
+    return this.messageService.deleteAllMessages( debtorId);
+  }
+
   @Post(':id/resend')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(SellerRole.SELLER)
@@ -141,4 +152,5 @@ export class MessageController {
     const requesterRole = request.user?.role;
     return this.messageService.resendMessage(id, requesterId, requesterRole);
   }
+
 }
