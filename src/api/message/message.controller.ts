@@ -55,7 +55,7 @@ export class MessageController {
   @ApiResponse({ status: 400, description: 'Failed to retrieve messages' })
   async getAllMessages(
     @Query('page') page: string = '1',
-    @Query('limit') limit: string = '10',
+    @Query('limit') limit: string = '10000',
     @Query('search') search?: string,
     @Query('debtorId') debtorId?: string,
     @Query('sent') sent?: string,
@@ -64,7 +64,7 @@ export class MessageController {
     @Req() request?: any,
   ) {
     const pageNumber = parseInt(page, 10);
-    const limitNumber = parseInt(limit, 10);
+    const limitNumber = parseInt(limit, 10000);
     const requesterId = request.user?.sub;
     const requesterRole = request.user?.role;
     

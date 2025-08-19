@@ -70,8 +70,7 @@ export class PaymentQueryDto {
   })
   @IsOptional()
   @Transform(({ value }) => parseInt(value))
-  @Min(1)
-  page?: number = 1;
+  page?:number;
 
   @ApiPropertyOptional({
     description: 'Items per page',
@@ -80,8 +79,7 @@ export class PaymentQueryDto {
   })
   @IsOptional()
   @Transform(({ value }) => parseInt(value))
-  @Min(1)
-  limit?: number = 10;
+  limit?: number;
 
   @ApiPropertyOptional({
     description: 'Search by debtor name or product name',
