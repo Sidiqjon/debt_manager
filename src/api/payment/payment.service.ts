@@ -210,7 +210,7 @@ export class PaymentService {
   }
 
   async getAllPayments(sellerId: string, query: PaymentQueryDto, userRole: string) {
-    const { page = 1, limit = 10, search, debtorId, debtId, paymentType } = query;
+    const { page = 1, limit = 10000, search, debtorId, debtId, paymentType } = query;
     const skip = (page - 1) * limit;
 
     const where: any = userRole === 'ADMIN' || userRole === 'SUPER' ? {} : {
