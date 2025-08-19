@@ -127,7 +127,7 @@ export class MessageController {
     return this.messageService.deleteMessage(id, requesterId, requesterRole);
   }
 
-  @Delete(":id")
+  @Delete(":debtorId/deleteAll")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(AdminRole.ADMIN, AdminRole.SUPER, SellerRole.SELLER)
   @ApiBearerAuth()
