@@ -105,7 +105,7 @@ export class MessageService {
 
   async getAllMessages(
     page: number = 1,
-    limit: number = 10,
+    limit: number = 10000,
     search?: string,
     filters?: any,
     requesterId?: string,
