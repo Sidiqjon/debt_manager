@@ -64,7 +64,7 @@ export class MessageController {
     @Req() request?: any,
   ) {
     const pageNumber = parseInt(page, 10);
-    const limitNumber = parseInt(limit, 10000);
+    const limitNumber = parseInt(limit, 10);
     const requesterId = request.user?.sub;
     const requesterRole = request.user?.role;
     
