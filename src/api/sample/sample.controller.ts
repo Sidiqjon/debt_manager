@@ -51,7 +51,7 @@ export class SampleController {
     @ApiResponse({ status: 400, description: 'Failed to retrieve samples' })
     async getAllSamples(
         @Query('page') page: string = '1',
-        @Query('limit') limit: string = '10',
+        @Query('limit') limit: string = '10000',
         @Query('search') search?: string,
         @Query('verified') verified?: string,
         // @Query('sellerId') sellerId?: string,

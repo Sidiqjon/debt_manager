@@ -51,7 +51,7 @@ export class DebtorService {
   }
 
 
-  async getAllDebtors(page: number = 1, limit: number = 10, search?: string, requesterId?: string, requesterRole?: string) {
+  async getAllDebtors(page: number = 1, limit: number = 10000, search?: string, requesterId?: string, requesterRole?: string) {
     try {
       const skip = (page - 1) * limit;
       let where: any = {};

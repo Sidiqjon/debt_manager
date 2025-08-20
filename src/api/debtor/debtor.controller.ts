@@ -49,7 +49,7 @@ export class DebtorController {
   @ApiResponse({ status: 400, description: 'Failed to retrieve debtors' })
   async getAllDebtors(
     @Query('page') page: string = '1',
-    @Query('limit') limit: string = '10',
+    @Query('limit') limit: string = '10000',
     @Query('search') search?: string,
     @Req() request?: any,
   ) {

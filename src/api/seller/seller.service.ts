@@ -177,7 +177,7 @@ export class SellerService {
   }
 
 
-  async getAllSellers(page: number = 1, limit: number = 10, search?: string) {
+  async getAllSellers(page: number = 1, limit: number = 10000, search?: string) {
     try {
       const skip = (page - 1) * limit;
       const where = search

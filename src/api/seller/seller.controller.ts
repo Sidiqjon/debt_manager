@@ -261,7 +261,7 @@ export class SellerController {
   })
   async getAllSellers(
     @Query('page') page: string = '1',
-    @Query('limit') limit: string = '10',
+    @Query('limit') limit: string = '10000',
     @Query('search') search?: string,
   ) {
     const pageNumber = parseInt(page, 10);
